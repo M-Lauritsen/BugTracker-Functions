@@ -1,4 +1,4 @@
-const { db } = require('../Utility');
+const { db } = require('../Utility/admin');
 
 exports.getAllBugs = (req, res) => {
   db.collection('bugs')
@@ -11,7 +11,7 @@ exports.getAllBugs = (req, res) => {
           bugId: doc.id,
           title: doc.data().title,
           body: doc.data().body,
-          userHandle: doc.data().userHandle,
+          username: doc.data().username,
           createdAt: doc.data().createdAt,
         });
       });
@@ -28,7 +28,7 @@ exports.postBug = (req, res) => {
   }
 
   const newBug = {
-    userHandle: req.user.handle,
+    username: req.user.username,
     title: req.body.title,
     body: req.body.body,
     createdAt: new Date().toISOString(),

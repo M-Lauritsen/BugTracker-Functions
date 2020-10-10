@@ -5,26 +5,29 @@ const config = require('../Utility/config');
 const firebase = require('firebase');
 firebase.initializeApp(config);
 
-const { validateSignupData,validateLoginData } = require('../Utility/validators');
+const {
+  validateSignupData,
+  validateLoginData,
+} = require('../Utility/validators');
 
 exports.signup = (req, res) => {
   const newUser = {
     email: req.body.email,
     password: req.body.password,
     confirmPassword: req.body.confirmPassword,
-    handle: req.body.handle,
-    };
-    
-    const { valid, errors } = validateSignupData(newUser) => {
-        let errors = {} // https://youtu.be/m_u6P5k0vP0?list=PLPIIo7YIVvMkpPWcfxRHCHBX2W6ghMR9O&t=6247
-    }
+    username: req.body.username,
+  };
+
+  const { valid, errors } = validateSignupData(newUser);
+
+  if (!valid) return res.status(400).json(errors);
 
   let token, userId;
-  db.doc(`/users/${newUser.handle}`)
+  db.doc(`/users/${newUser.username}`)
     .get()
     .then(doc => {
       if (doc.exists) {
-        return res.status(400).json({ handle: 'this handle is taken' });
+        return res.status(400).json({ username: 'this username is taken' });
       } else {
         return firebase
           .auth()
@@ -38,12 +41,12 @@ exports.signup = (req, res) => {
     .then(idToken => {
       token = idToken;
       const userCredentials = {
-        handle: newUser.handle,
+        username: newUser.username,
         email: newUser.email,
         createdAt: new Date().toISOString(),
         userId,
       };
-      return db.doc(`/users/${newUser.handle}`).set(userCredentials);
+      return db.doc(`/users/${newUser.username}`).set(userCredentials);
     })
     .then(() => {
       return res.status(201).json({ token });
@@ -58,17 +61,15 @@ exports.signup = (req, res) => {
 };
 
 exports.login = (req, res) => {
+  
   const user = {
     email: req.body.email,
     password: req.body.password,
   };
-
-  let errors = {};
-
-  if (isEmpty(user.email)) errors.email = 'Must not be empty';
-  if (isEmpty(user.password)) errors.password = 'Must not be empty';
-
-  if (Object.keys(errors).length > 0) return res.sendStatus(400).json(errors);
+  
+  const { valid, errors } = validateLoginData(user);
+  
+  if (!valid) return res.status(400).json(errors);
 
   firebase
     .auth()

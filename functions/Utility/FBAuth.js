@@ -1,4 +1,4 @@
-const { admin } = require('./admin');
+const { admin, db } = require('./admin');
 
 module.exports = (req, res, next) => {
   let idToken;
@@ -25,7 +25,7 @@ module.exports = (req, res, next) => {
         .get();
     })
     .then(data => {
-      req.user.handle = data.docs[0].data().handle;
+      req.user.username = data.docs[0].data().username;
       return next();
     })
     .catch(error => {
