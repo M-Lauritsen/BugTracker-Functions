@@ -1,141 +1,27 @@
 const functions = require('firebase-functions');
-const admin = require('firebase-admin');
+
+const { getAllBugs } = require('./Handlers/Bugs');
+const { signup, login } = require('./Handlers/Users');
+
 const firebase = require('firebase');
 const app = require('express')();
 
-const Config = {
-  apiKey: 'AIzaSyAz0ykIL2gjxuta2D1ftKlMEQlhTrbLgNQ',
-  authDomain: 'bugtracker-8b0d5.firebaseapp.com',
-  databaseURL: 'https://bugtracker-8b0d5.firebaseio.com',
-  projectId: 'bugtracker-8b0d5',
-  storageBucket: 'bugtracker-8b0d5.appspot.com',
-  messagingSenderId: '716587226540',
-  appId: '1:716587226540:web:e2de17e6dbfe31bbde9609',
-  measurementId: 'G-2MD3NY3QYQ',
-};
-
 // Initialize Firebase
 
-admin.initializeApp();
 firebase.initializeApp(Config);
 //firebase.analytics();
 
-const db = admin.firestore();
+//Bugs Routes
+app.get('/bugs', getAllBugs); // Get all bugs
+app.post('/bug', FBAuth, postBug); // Post a bug
 
-app.get('/bugs', (req, res) => {
-  db.collection('bugs')
-    .orderBy('createdAt', 'desc')
-    .get()
-    .then(data => {
-      let bugs = [];
-      data.forEach(doc => {
-        bugs.push({
-          bugId: doc.id,
-          title: doc.data().title,
-          body: doc.data().body,
-          userHandle: doc.data().userHandle,
-          createdAt: doc.data().createdAt,
-        });
-      });
-      return res.json(bugs);
-    })
-    .catch(error => console.log(error));
-});
+// User Routes
+app.post('/signup', signup); // Signup
+app.post('/login', login); // login
 
-app.post('/bug', (req, res) => {
-  const newBug = {
-    userHandle: req.body.userHandle,
-    title: req.body.title,
-    body: req.body.body,
-    createdAt: new Date().toISOString(),
-  };
+//Firebase Authentication Middleware
 
-  db.collection('bugs')
-    .add(newBug)
-    .then(doc => {
-      res.json({ message: `document ${doc.id} added successfully` });
-    })
-    .catch(error => {
-      res.status(500).json({ error: 'Something went wrong' });
-      console.log(error);
-    });
-});
 
-//regEx for email check
-const isEmail = email => {
-  const regEx = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-  if (email.match(regEx)) return true;
-  else return false;
-};
 
-const isEmpty = string => {
-  if (string.trim() === '') return true;
-  else return false;
-};
-
-// Signup route
-app.post('/signup', (req, res) => {
-  const newUser = {
-    email: req.body.email,
-    password: req.body.password,
-    confirmPassword: req.body.confirmPassword,
-    handle: req.body.handle,
-  };
-
-  let errors = {};
-
-  if (isEmpty(newUser.email)) {
-    errors.email = 'Forgot to fill in a email';
-  } else if (!isEmail(newUser.email)) {
-    errors.email = 'Must be a valid email';
-  }
-
-  if (isEmpty(newUser.password)) errors.password = 'Must not be empty';
-  if (newUser.password !== newUser.confirmPassword)
-    errors.confirmPassword = 'Password dont match!';
-  if (isEmpty(newUser.handle)) errors.handle = 'Must not be empty';
-
-  //Check if errors Object is empty
-  if (Object.keys(errors).length > 0) return res.status(400).json(errors);
-
-  //TODO validate data
-
-  let token, userId;
-  db.doc(`/users/${newUser.handle}`)
-    .get()
-    .then(doc => {
-      if (doc.exists) {
-        return res.status(400).json({ handle: 'this handle is taken' });
-      } else {
-        return firebase
-          .auth()
-          .createUserWithEmailAndPassword(newUser.email, newUser.password);
-      }
-    })
-    .then(data => {
-      userId = data.user.uid;
-      return data.user.getIdToken();
-    })
-    .then(idToken => {
-      token = idToken;
-      const userCredentials = {
-        handle: newUser.handle,
-        email: newUser.email,
-        createdAt: new Date().toISOString(),
-        userId,
-      };
-      return db.doc(`/users/${newUser.handle}`).set(userCredentials);
-    })
-    .then(() => {
-      return res.status(201).json({ token });
-    })
-    .catch(error => {
-      console.error(error);
-      if (error.code === 'auth/email-already-in-use') {
-        return res.status(400).json({ message: 'Email is already registered' });
-      }
-      return res.status(500).json({ error: error.code });
-    });
-});
 
 exports.api = functions.region('europe-west1').https.onRequest(app);
