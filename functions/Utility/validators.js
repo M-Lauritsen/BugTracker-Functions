@@ -23,6 +23,7 @@ exports.validateSignupData = data => {
   if (data.password !== data.confirmPassword)
     errors.confirmPassword = 'Password dont match!';
   if (isEmpty(data.username)) errors.username = 'Must not be empty';
+  if (isEmpty(data.department)) errors.department = 'Must not be empty';
 
   //Check if errors Object is empty
   return {
@@ -40,4 +41,13 @@ exports.validateLoginData = data => {
     errors,
     valid: Object.keys(errors).length === 0 ? true : false,
   };
+};
+
+exports.reduceUserDetails = data => {
+  let userDatails = {};
+  console.log(data);
+  if (!isEmpty(data.department.trim()))
+    userDatails.department = data.department;
+
+  return userDatails;
 };
