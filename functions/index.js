@@ -1,4 +1,5 @@
 const functions = require('firebase-functions');
+const { db } = require('./Utility/admin');
 
 const app = require('express')();
 
@@ -38,5 +39,75 @@ app.post('/user', FBAuth, addUserDetails);
 app.get('/user', FBAuth, getAuthenticatedUser);
 
 //Firebase Authentication Middleware
+//https://www.youtube.com/watch?v=m_u6P5k0vP0&feature=youtu.be&list=PLPIIo7YIVvMkpPWcfxRHCHBX2W6ghMR9O&t=11795
 
 exports.api = functions.region('europe-west1').https.onRequest(app);
+
+exports.createNotificationOnAssign = functions
+  .region('europe-west1')
+  .firestore.document('assigns/{id}')
+  .onCreate(snapshot => {
+    db.doc(`/bugs/${snapshot.data().bugId}`)
+      .get()
+      .then(doc => {
+        if (doc.exists) {
+          return db.doc(`/notifications/${snapshot.id}`).set({
+            createdAt: new Date().toISOString(),
+            recipient: doc.data().username,
+            sender: snapshot.data().username,
+            type: 'assign',
+            read: false,
+            bugId: doc.id,
+          });
+        }
+      })
+      .then(() => {
+        return;
+      })
+      .catch(err => {
+        console.error(err);
+        return;
+      });
+  });
+
+exports.deleteNotificationOnUnassign = functions
+  .region('europe-west1')
+  .firestore.document('assigns/{id}')
+  .onDelete(snapshot => {
+    db.doc(`/notifications/${snapshot.id}`)
+      .delete()
+      .then(() => {
+        return;
+      })
+      .catch(err => {
+        console.error(err);
+        return;
+      });
+  });
+
+exports.createNotificationOnComment = functions
+  .region('europe-west1')
+  .firestore.document('comments/{id}')
+  .onCreate(snapshot => {
+    db.doc(`/bugs/${snapshot.data().bugId}`)
+      .get()
+      .then(doc => {
+        if (doc.exists) {
+          return db.doc(`/notifications/${snapshot.id}`).set({
+            createdAt: new Date().toISOString(),
+            recipient: doc.data().username,
+            sender: snapshot.data().username,
+            type: 'comment',
+            read: false,
+            bugId: doc.id,
+          });
+        }
+      })
+      .then(() => {
+        return;
+      })
+      .catch(err => {
+        console.error(err);
+        return;
+      });
+  });

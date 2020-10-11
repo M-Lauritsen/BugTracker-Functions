@@ -15,7 +15,7 @@ let db = {
       title: 'Title for the bug', // title
       body: 'Description of the bug', // Description
       createdAt: '2020-10-07T16:15:55.596Z', // Date string
-      onItCount: 3, // people that are on the bug
+      assignCount: 3, // people that are on the bug
       commentCount: 4, // comments
     },
   ],
@@ -24,6 +24,16 @@ let db = {
       username: 'user',
       bugId: 'bugid',
       body: 'First bug',
+      createdAt: '2020-10-07T16:15:55.596Z',
+    },
+  ],
+  notifications: [
+    {
+      recipient: 'user', //who gets the notification
+      sender: 'Carina', // who sends the notification
+      read: 'true | false', // read true / false
+      bugId: '902u90u123',
+      type: 'assign | comment', // assign or comment?
       createdAt: '2020-10-07T16:15:55.596Z',
     },
   ],
