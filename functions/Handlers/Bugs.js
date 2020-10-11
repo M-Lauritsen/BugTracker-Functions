@@ -34,7 +34,7 @@ exports.postBug = (req, res) => {
     title: req.body.title,
     body: req.body.body,
     userImage: req.user.imageUrl,
-    markOnitCount: 0,
+    assignCount: 0,
     commentCount: 0,
     createdAt: new Date().toISOString(),
   };
@@ -101,6 +101,9 @@ exports.commentBug = (req, res) => {
       if (!doc.exists) {
         return res.status(404).json({ error: 'Bug does not exits' });
       }
+      return doc.ref.update({ commentCount: doc.data().commentCount + 1 });
+    })
+    .then(() => {
       return db.collection('comments').add(newComment);
     })
     .then(() => {
@@ -113,9 +116,9 @@ exports.commentBug = (req, res) => {
 };
 
 //user marks they are on it
-exports.markOnIt = (req, res) => {
-  const markDocument = db
-    .collection('markonits')
+exports.assignBug = (req, res) => {
+  const assignDocument = db
+    .collection('assigns')
     .where('username', '==', req.user.username)
     .where('bugId', '==', req.params.bugId)
     .limit(1);
@@ -130,7 +133,7 @@ exports.markOnIt = (req, res) => {
       if (doc.exists) {
         bugData = doc.data();
         bugData.bugId = doc.id;
-        return markDocument.get();
+        return assignDocument.get();
       } else {
         return res.status(404).json({ error: 'Bug Not found!' });
       }
@@ -138,14 +141,14 @@ exports.markOnIt = (req, res) => {
     .then(data => {
       if (data.empty) {
         return db
-          .collection('markOnIts')
+          .collection('assigns')
           .add({
             bugId: req.params.bugId,
             username: req.user.username,
           })
           .then(() => {
-            bugData.markOnitCount++;
-            return bugDocument.update({ markOnitCount: bugData.markOnitCount });
+            bugData.assignCount++;
+            return bugDocument.update({ assignCount: bugData.assignCount });
           })
           .then(() => {
             return res.json(bugData);
@@ -160,12 +163,9 @@ exports.markOnIt = (req, res) => {
     });
 };
 
-//ALL THE BUGS ATM!!!
-//https://youtu.be/m_u6P5k0vP0?list=PLPIIo7YIVvMkpPWcfxRHCHBX2W6ghMR9O&t=11795
-
-exports.markOffIt = (req, res) => {
-  const markDocument = db
-    .collection('markonits')
+exports.unAssignBug = (req, res) => {
+  const assignDocument = db
+    .collection('assigns')
     .where('username', '==', req.user.username)
     .where('bugId', '==', req.params.bugId)
     .limit(1);
@@ -180,7 +180,7 @@ exports.markOffIt = (req, res) => {
       if (doc.exists) {
         bugData = doc.data();
         bugData.bugId = doc.id;
-        return markDocument.get();
+        return assignDocument.get();
       } else {
         return res.status(404).json({ error: 'Bug Not found!' });
       }
@@ -190,19 +190,43 @@ exports.markOffIt = (req, res) => {
         return res.status(400).json({ error: 'You are not on the bug!' });
       } else {
         return db
-          .doc(`/markonits/${data.docs[0].data().id}`)
+          .doc(`/assigns/${data.docs[0].id}`)
           .delete()
           .then(() => {
-            bugData.markOnitCount--;
-            return bugDocument.update({ markOnitCount: bugData.markOnitCount });
+            bugData.assignCount--;
+            return bugDocument.update({ assignCount: bugData.assignCount });
           })
           .then(() => {
-            return res.json(bugData);
+            res.json(bugData);
           });
       }
     })
     .catch(err => {
       console.error(err);
       res.status(500).json({ error: err.code });
+    });
+};
+
+//Delete Bug
+exports.deleteBug = (req, res) => {
+  const document = db.doc(`/bugs/${req.params.bugId}`);
+  document
+    .get()
+    .then(doc => {
+      if (!doc.exists) {
+        return res.status(404).json({ error: 'Bug not found!' });
+      }
+      if (doc.data().username !== req.user.username) {
+        return res.status(403).json({ error: 'Unauthorized' });
+      } else {
+        return document.delete();
+      }
+    })
+    .then(() => {
+      res.json({ message: 'Bug Deleted' });
+    })
+    .catch(err => {
+      console.error(err);
+      return res.status(500).json({ error: err.code });
     });
 };

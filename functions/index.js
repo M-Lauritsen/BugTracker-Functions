@@ -9,8 +9,9 @@ const {
   postBug,
   getBug,
   commentBug,
-  markOnIt,
-  markOffIt,
+  deleteBug,
+  assignBug,
+  unAssignBug,
 } = require('./Handlers/Bugs');
 const {
   signup,
@@ -24,9 +25,9 @@ const {
 app.get('/bugs', getAllBugs); // Get all bugs
 app.post('/bug', FBAuth, postBug); // Post a bug
 app.get('/bug/:bugId', getBug);
-// TODO Delete bug
-app.get('/bug/:bugId/markOnIt', FBAuth, markOnIt); //User can mark that they are on the bug
-app.get('/bug/:bugId/markOffIt', FBAuth, markOffIt); //User can UnMark that they are on it
+app.delete('/bug/:bugId', FBAuth, deleteBug);
+app.get('/bug/:bugId/assignBug', FBAuth, assignBug); //User can mark that they are on the bug
+app.get('/bug/:bugId/unAssignBug', FBAuth, unAssignBug); //User can UnMark that they are on it
 app.post('/bug/:bugId/comment', FBAuth, commentBug);
 
 // User Routes

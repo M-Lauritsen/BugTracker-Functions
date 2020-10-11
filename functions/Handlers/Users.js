@@ -119,7 +119,7 @@ exports.getAuthenticatedUser = (req, res) => {
       if (doc.exists) {
         userData.credentials = doc.data();
         return db
-          .collection('onIt')
+          .collection('assigns')
           .where('username', '==', req.user.username)
           .get();
       }
