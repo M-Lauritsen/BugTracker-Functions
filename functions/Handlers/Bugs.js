@@ -18,7 +18,7 @@ exports.getAllBugs = (req, res) => {
       });
       return res.json(bugs);
     })
-    .catch(error => console.log(error));
+    .catch(error => console.error(error));
 };
 
 //Post new bug
@@ -33,13 +33,18 @@ exports.postBug = (req, res) => {
     username: req.user.username,
     title: req.body.title,
     body: req.body.body,
+    userImage: req.user.imageUrl,
+    markOnitCount: 0,
+    commentCount: 0,
     createdAt: new Date().toISOString(),
   };
 
   db.collection('bugs')
     .add(newBug)
     .then(doc => {
-      res.json({ message: `document ${doc.id} added successfully` });
+      const resBug = newBug;
+      resBug.bugId = doc.id;
+      res.json(resBug);
     })
     .catch(error => {
       res.status(500).json({ error: 'Something went wrong' });
@@ -85,16 +90,72 @@ exports.commentBug = (req, res) => {
   const newComment = {
     body: req.body.body,
     createdAt: new Date().toISOString(),
-    bugId: req.param.bugId,
+    bugId: req.params.bugId,
     username: req.user.username,
     userImage: req.user.imageUrl,
   };
 
-  db.doc(`/bugs/${req.param.bugs}`)
+  db.doc(`/bugs/${req.params.bugId}`)
     .get()
     .then(doc => {
       if (!doc.exists) {
         return res.status(404).json({ error: 'Bug does not exits' });
-      } // https://youtu.be/m_u6P5k0vP0?list=PLPIIo7YIVvMkpPWcfxRHCHBX2W6ghMR9O&t=10289
+      }
+      return db.collection('comments').add(newComment);
+    })
+    .then(() => {
+      res.json(newComment);
+    })
+    .catch(err => {
+      console.log(err);
+      res.status(500).json({ error: 'something went wrong' });
+    });
+};
+
+//user marks they are on it
+exports.markOnIt = (req, res) => {
+  const markDocument = db
+    .collection('markonits')
+    .where('username', '== ', req.user.username)
+    .where('bugId', '== ', req.params.bugId)
+    .limit(1);
+
+  const bugDocument = db.doc(`/bugs/${req.params.bugId}`);
+
+  let bugData;
+
+  bugDocument
+    .get()
+    .then(doc => {
+      if (doc.exists) {
+        bugData = doc.data();
+        bugData.bugId = doc.id;
+        return markDocument.get();
+      } else {
+        return res.status(404).json({ error: 'Bug Not found!' });
+      }
+    })
+    .then(data => {
+      if (data.empty) {
+        return db
+          .collection('markOnIts')
+          .add({
+            bugId: req.params.bugId,
+            username: req.user.username,
+          })
+          .then(() => {
+            bugData.markOnitCount++;
+            return bugDocument.update({ markOnitCount: bugData.markOnitCount });
+          })
+          .then(() => {
+            return res.json(bugData);
+          });
+      } else {
+        return res.status(400).json({ error: 'Already on the bug!' });
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      res.status(500).json({ error: err.code });
     });
 };
