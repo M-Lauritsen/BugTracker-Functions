@@ -1,3 +1,3 @@
 # BugTracker-Functions
 
-Using firebase functions as a backend for a bugtracker
+Firebase functions as a backend for a facebook type of bugtracker
