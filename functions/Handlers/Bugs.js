@@ -116,8 +116,8 @@ exports.commentBug = (req, res) => {
 exports.markOnIt = (req, res) => {
   const markDocument = db
     .collection('markonits')
-    .where('username', '== ', req.user.username)
-    .where('bugId', '== ', req.params.bugId)
+    .where('username', '==', req.user.username)
+    .where('bugId', '==', req.params.bugId)
     .limit(1);
 
   const bugDocument = db.doc(`/bugs/${req.params.bugId}`);
@@ -152,6 +152,53 @@ exports.markOnIt = (req, res) => {
           });
       } else {
         return res.status(400).json({ error: 'Already on the bug!' });
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      res.status(500).json({ error: err.code });
+    });
+};
+
+//ALL THE BUGS ATM!!!
+//https://youtu.be/m_u6P5k0vP0?list=PLPIIo7YIVvMkpPWcfxRHCHBX2W6ghMR9O&t=11795
+
+exports.markOffIt = (req, res) => {
+  const markDocument = db
+    .collection('markonits')
+    .where('username', '==', req.user.username)
+    .where('bugId', '==', req.params.bugId)
+    .limit(1);
+
+  const bugDocument = db.doc(`/bugs/${req.params.bugId}`);
+
+  let bugData;
+
+  bugDocument
+    .get()
+    .then(doc => {
+      if (doc.exists) {
+        bugData = doc.data();
+        bugData.bugId = doc.id;
+        return markDocument.get();
+      } else {
+        return res.status(404).json({ error: 'Bug Not found!' });
+      }
+    })
+    .then(data => {
+      if (data.empty) {
+        return res.status(400).json({ error: 'You are not on the bug!' });
+      } else {
+        return db
+          .doc(`/markonits/${data.docs[0].data().id}`)
+          .delete()
+          .then(() => {
+            bugData.markOnitCount--;
+            return bugDocument.update({ markOnitCount: bugData.markOnitCount });
+          })
+          .then(() => {
+            return res.json(bugData);
+          });
       }
     })
     .catch(err => {
