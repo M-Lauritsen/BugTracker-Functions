@@ -119,15 +119,15 @@ exports.getAuthenticatedUser = (req, res) => {
       if (doc.exists) {
         userData.credentials = doc.data();
         return db
-          .collection('onItCount')
+          .collection('onIt')
           .where('username', '==', req.user.username)
           .get();
       }
     })
     .then(data => {
-      userData.onItCount = [];
+      userData.onIt = [];
       data.forEach(doc => {
-        userData.onItCount.push(doc.data());
+        userData.onIt.push(doc.data());
       });
       return res.json(userData);
     })
