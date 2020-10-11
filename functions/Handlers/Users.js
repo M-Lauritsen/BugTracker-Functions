@@ -10,6 +10,7 @@ const {
   validateLoginData,
   reduceUserDetails,
 } = require('../Utility/validators');
+const { json } = require('express');
 
 //user signup
 exports.signup = (req, res) => {
@@ -63,7 +64,9 @@ exports.signup = (req, res) => {
       if (error.code === 'auth/email-already-in-use') {
         return res.status(400).json({ message: 'Email is already registered' });
       }
-      return res.status(500).json({ error: error.code });
+      return res
+        .status(500)
+        .json({ general: 'Something went wrong, please try again' });
     });
 };
 
@@ -110,6 +113,44 @@ exports.addUserDetails = (req, res) => {
     });
 };
 
+//Get any users details
+exports.getUserDetails = (req, res) => {
+  let userData = {};
+  db.doc(`/users/${req.params.username}`)
+    .get()
+    .then(doc => {
+      if (doc.exists) {
+        userData.user = doc.data();
+        return db
+          .collection('bugs')
+          .where('username', '==', req.params.username)
+          .orderBy('createdAt', 'desc')
+          .get();
+      } else {
+        return res.status(404).json({ error: 'User not found!' });
+      }
+    })
+    .then(data => {
+      userData.bugs = [];
+      data.forEach(doc => {
+        userData.bugs.push({
+          body: doc.data().body,
+          createdAt: doc.data().createdAt,
+          username: doc.data().username,
+          userImage: doc.data().userImage,
+          assignCount: doc.data().assignCount,
+          commentCount: doc.data().commentCount,
+          bugId: doc.id,
+        });
+      });
+      return res.json(userData);
+    })
+    .catch(err => {
+      console.error(err);
+      return res.status(500).json({ error: err.code });
+    });
+};
+
 // get own credentials
 exports.getAuthenticatedUser = (req, res) => {
   let userData = {};
@@ -125,9 +166,29 @@ exports.getAuthenticatedUser = (req, res) => {
       }
     })
     .then(data => {
-      userData.onIt = [];
+      userData.assigned = [];
       data.forEach(doc => {
-        userData.onIt.push(doc.data());
+        userData.assigned.push(doc.data());
+      });
+      return db
+        .collection('notifications')
+        .where('recipient', '==', req.user.username)
+        .orderBy('createdAt', 'desc')
+        .limit(15)
+        .get();
+    })
+    .then(data => {
+      userData.notifications = [];
+      data.forEach(doc => {
+        userData.notifications.push({
+          recipient: doc.data().recipient,
+          sender: doc.data().sender,
+          createdAt: doc.data().createdAt,
+          bugId: doc.data().bugId,
+          type: doc.data().type,
+          read: doc.data().read,
+          notificationId: doc.id,
+        });
       });
       return res.json(userData);
     })
@@ -189,4 +250,22 @@ exports.uploadImage = (req, res) => {
       });
   });
   busboy.end(req.rawBody);
+};
+
+//firebase batch write
+exports.markNotificationsRead = (req, res) => {
+  let batch = db.batch();
+  req.body.forEach(notificationId => {
+    const notification = db.doc(`/notifications/${notificationId}`);
+    batch.update(notification, { read: true });
+  });
+  batch
+    .commit()
+    .then(() => {
+      return res.json({ message: 'Notification Read' });
+    })
+    .catch(err => {
+      console.error(err);
+      return res.status(500).json({ error: err.code });
+    });
 };

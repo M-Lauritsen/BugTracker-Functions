@@ -20,6 +20,8 @@ const {
   uploadImage,
   addUserDetails,
   getAuthenticatedUser,
+  getUserDetails,
+  // markNotificationsRead,
 } = require('./Handlers/Users');
 
 //Bugs Routes
@@ -37,20 +39,21 @@ app.post('/login', login); // login
 app.post('/user/image', FBAuth, uploadImage);
 app.post('/user', FBAuth, addUserDetails);
 app.get('/user', FBAuth, getAuthenticatedUser);
+app.get('/user/:username', getUserDetails);
+app.post('/notifications', FBAuth, markNotificationsRead);
 
 //Firebase Authentication Middleware
-//https://www.youtube.com/watch?v=m_u6P5k0vP0&feature=youtu.be&list=PLPIIo7YIVvMkpPWcfxRHCHBX2W6ghMR9O&t=11795
-
 exports.api = functions.region('europe-west1').https.onRequest(app);
 
 exports.createNotificationOnAssign = functions
   .region('europe-west1')
   .firestore.document('assigns/{id}')
   .onCreate(snapshot => {
-    db.doc(`/bugs/${snapshot.data().bugId}`)
+    return db
+      .doc(`/bugs/${snapshot.data().bugId}`)
       .get()
       .then(doc => {
-        if (doc.exists) {
+        if (doc.exists && doc.data().username !== snapshot.data().username) {
           return db.doc(`/notifications/${snapshot.id}`).set({
             createdAt: new Date().toISOString(),
             recipient: doc.data().username,
@@ -61,24 +64,16 @@ exports.createNotificationOnAssign = functions
           });
         }
       })
-      .then(() => {
-        return;
-      })
-      .catch(err => {
-        console.error(err);
-        return;
-      });
+      .catch(err => console.error(err));
   });
 
 exports.deleteNotificationOnUnassign = functions
   .region('europe-west1')
   .firestore.document('assigns/{id}')
   .onDelete(snapshot => {
-    db.doc(`/notifications/${snapshot.id}`)
+    return db
+      .doc(`/notifications/${snapshot.id}`)
       .delete()
-      .then(() => {
-        return;
-      })
       .catch(err => {
         console.error(err);
         return;
@@ -89,10 +84,11 @@ exports.createNotificationOnComment = functions
   .region('europe-west1')
   .firestore.document('comments/{id}')
   .onCreate(snapshot => {
-    db.doc(`/bugs/${snapshot.data().bugId}`)
+    return db
+      .doc(`/bugs/${snapshot.data().bugId}`)
       .get()
       .then(doc => {
-        if (doc.exists) {
+        if (doc.exists && doc.data().username !== snapshot.data().username) {
           return db.doc(`/notifications/${snapshot.id}`).set({
             createdAt: new Date().toISOString(),
             recipient: doc.data().username,
@@ -103,11 +99,11 @@ exports.createNotificationOnComment = functions
           });
         }
       })
-      .then(() => {
-        return;
-      })
       .catch(err => {
         console.error(err);
         return;
       });
   });
+
+//m_u6P5k0vP0?list=PLPIIo7YIVvMkpPWcfxRHCHBX2W6ghMR9O&t=14634
+exports;
