@@ -252,7 +252,7 @@ exports.uploadImage = (req, res) => {
   busboy.end(req.rawBody);
 };
 
-//firebase batch write
+//add notification Id's to an array and marks them as read
 exports.markNotificationsRead = (req, res) => {
   let batch = db.batch();
   req.body.forEach(notificationId => {

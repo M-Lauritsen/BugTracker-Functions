@@ -45,6 +45,7 @@ app.post('/notifications', FBAuth, markNotificationsRead);
 //Firebase Authentication Middleware
 exports.api = functions.region('europe-west1').https.onRequest(app);
 
+//trigger that sends a notification if a user assigns a bug
 exports.createNotificationOnAssign = functions
   .region('europe-west1')
   .firestore.document('assigns/{id}')
@@ -67,6 +68,7 @@ exports.createNotificationOnAssign = functions
       .catch(err => console.error(err));
   });
 
+//trigger that deletes the assign notification again
 exports.deleteNotificationOnUnassign = functions
   .region('europe-west1')
   .firestore.document('assigns/{id}')
@@ -80,6 +82,7 @@ exports.deleteNotificationOnUnassign = functions
       });
   });
 
+//trigger for notification on comments
 exports.createNotificationOnComment = functions
   .region('europe-west1')
   .firestore.document('comments/{id}')
@@ -105,6 +108,7 @@ exports.createNotificationOnComment = functions
       });
   });
 
+//trigger that updates the userImage if the user changes the image
 exports.onUserImageChange = functions
   .region('europe-west1')
   .firestore.document('/users/{userId}')
@@ -127,6 +131,7 @@ exports.onUserImageChange = functions
     } else return true; //If user just changed some details
   });
 
+//Trigger that Deletes comments, assigns and notifications
 exports.onDeleteBug = functions
   .region('europe-west1')
   .firestore.document('/bugs/{bugId}')
