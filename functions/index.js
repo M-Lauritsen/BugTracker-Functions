@@ -21,7 +21,7 @@ const {
   addUserDetails,
   getAuthenticatedUser,
   getUserDetails,
-  // markNotificationsRead,
+  markNotificationsRead,
 } = require('./Handlers/Users');
 
 //Bugs Routes
@@ -105,5 +105,57 @@ exports.createNotificationOnComment = functions
       });
   });
 
-//m_u6P5k0vP0?list=PLPIIo7YIVvMkpPWcfxRHCHBX2W6ghMR9O&t=14634
-exports;
+exports.onUserImageChange = functions
+  .region('europe-west1')
+  .firestore.document('/users/{userId}')
+  .onUpdate(change => {
+    console.log(change.before.data()); // Check logs under Firebase/functions
+    console.log(change.after.data()); // Check logs under Firebase/functions
+    if (change.before.data().imageUrl !== change.after.data().imageUrl) {
+      let batch = db.batch();
+      return db
+        .collection('bugs')
+        .where('username', '==', change.before.data().username)
+        .get()
+        .then(data => {
+          data.forEach(doc => {
+            const bug = db.doc(`/bugs/${doc.id}`);
+            batch.update(bug, { userImage: change.after.data().imageUrl });
+          });
+          return batch.commit();
+        });
+    } else return true; //If user just changed some details
+  });
+
+exports.onDeleteBug = functions
+  .region('europe-west1')
+  .firestore.document('/bugs/{bugId}')
+  .onDelete((snapshot, context) => {
+    const bugId = context.params.bugId;
+    const batch = db.batch();
+    return db
+      .collection('comments')
+      .where('bugId', '==', bugId)
+      .get()
+      .then(data => {
+        data.forEach(doc => {
+          batch.delete(db.doc(`/comments/${doc.id}`));
+        });
+        return db.collection('assigns').where('bugId', '==', bugId).get();
+      })
+      .then(data => {
+        data.forEach(doc => {
+          batch.delete(db.doc(`/assigns/${doc.id}`));
+        });
+        return db.collection('notifications').where('bugId', '==', bugId).get();
+      })
+      .then(data => {
+        data.forEach(doc => {
+          batch.delete(db.doc(`/notifications/${doc.id}`));
+        });
+        return batch.commit();
+      })
+      .catch(err => {
+        console.error(err);
+      });
+  });
